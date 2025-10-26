@@ -1,33 +1,35 @@
 
-======================================================================
-PDF Forensics Deep Hashing - Evaluation Results
-======================================================================
+PDF FORENSICS EVALUATION RESULTS
+==================================================
 
-Model Configuration:
-- Hash Length: 64 bits
-- Device: cpu
-- Checkpoint: checkpoints/multimodal_dsh_model.pth
+RETRIEVAL METRICS
+- MAP: 0.6723
+- ROC AUC: 0.6887
+- Average Precision: 0.8774
 
-Retrieval Metrics:
-- Mean Average Precision (MAP): 0.6425
+PRECISION@K AND RECALL@K
+  K=  1: Precision=0.5909, Recall=0.0155
+  K=  5: Precision=0.6091, Recall=0.0768
+  K= 10: Precision=0.6424, Recall=0.1520
+  K= 20: Precision=0.6470, Recall=0.3031
 
-Precision@K and Recall@K:
-  - Precision@10: 0.6077
-  - Recall@10: 0.1923
-  - Precision@20: 0.6192
-  - Recall@20: 0.3846
-  - Precision@50: 0.6262
-  - Recall@50: 0.9615
+CLASSIFICATION METRICS
+- Precision: 1.0000
+- Recall: 0.2453
+- F1-Score: 0.3939
 
-Binary Classification Metrics:
-- Precision: 0.0000
-- Recall: 0.0000
-- F1-Score: 0.0000
+STATISTICAL ANALYSIS
+- Similar mean: 0.00 ± 0.00
+- Tampered mean: 11.64 ± 18.36
+- Mann-Whitney U p-value: 5.1217e-03
+- Effect size (Cohen's d): -0.8965
 
-Confusion Matrix:
+HASH QUALITY
+- Bit balance: 0.3030
+- Bit variance: 0.1341
+
+CONFUSION MATRIX
               Predicted
             Similar  Tampered
-Actual Similar    13      0     
-       Tampered   39      0     
-
-======================================================================
+Similar         13         0
+Tampered        40        13
