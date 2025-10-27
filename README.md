@@ -48,7 +48,7 @@ PDF Document → Text + Image Extraction → BERT + ResNet → Hash Code (64 bit
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   INPUT: PDF Page                    │
+│                   INPUT: PDF Page                   │
 └────────────────┬────────────────────────────────────┘
                  │
         ┌────────┴────────┐
