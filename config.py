@@ -8,6 +8,9 @@ import os
 # === DEVICE CONFIGURATION ===
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+ARXIV_CATEGORY_URL = "https://arxiv.org/list/cs/new"
+MAX_PDFS_TO_DOWNLOAD = 900
+
 # === MODEL CONFIGURATION ===
 HASH_BIT_LENGTH = 64
 MAX_SEQ_LENGTH = 512
@@ -15,8 +18,8 @@ IMAGE_SIZE = 224
 
 # === TRAINING CONFIGURATION ===
 LEARNING_RATE = 1e-4
-BATCH_SIZE = 8
-NUM_EPOCHS = 20
+BATCH_SIZE = 10
+NUM_EPOCHS = 30
 TRAIN_TEST_SPLIT = 0.8
 
 # === LOSS FUNCTION WEIGHTS ===

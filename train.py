@@ -17,7 +17,12 @@ from dataset import get_dataloader
 
 
 class DeepHashingLoss(nn.Module):
-    """Deep Supervised Hashing Loss with severity-aware weighting."""
+    """
+    Deep Supervised Hashing Loss with class imbalance weighting.
+    
+    The loss applies a weight of 3.0 to the minority class (identity pairs, Label=0)
+    to counteract the 1:5 ratio of identity to tampered data.
+    """
     
     def __init__(self, L: int = HASH_BIT_LENGTH, beta: float = BETA_QUANT, 
                  gamma: float = GAMMA_DIST):
@@ -25,6 +30,10 @@ class DeepHashingLoss(nn.Module):
         self.L = L
         self.beta = beta
         self.gamma = gamma
+        
+        # Weight for the minority class (Label 0: Identity/Similar).
+        # Calculated as: Total Samples / (Minority Samples * 2) = 5400 / (900 * 2) = 3.0
+        self.positive_weight = 3.0 
 
     def forward(self, hash1: torch.Tensor, hash2: torch.Tensor, 
                 target_label: torch.Tensor) -> tuple:
@@ -35,19 +44,26 @@ class DeepHashingLoss(nn.Module):
         Returns:
             (total_loss, sim_loss, quant_loss, dist_loss)
         """
+        
+        target_label = target_label.float()
+
         inner_product = (hash1 * hash2).sum(dim=1) / self.L
-        target_similarity = 1.0 - 2.0 * target_label
-        sim_loss = torch.log(1.0 + torch.exp(-target_similarity * inner_product)).mean()
+        
+        target_similarity = 1.0 - 2.0 * target_label 
+        
+        sim_loss_unweighted = (target_similarity * inner_product).clamp(min=-1.0).add(1.0).log1p().neg()
+        
+        weight = self.positive_weight * (1.0 - target_label) + (1.0 * target_label)
+        
+        sim_loss = (weight * sim_loss_unweighted).mean()
 
-        quant_loss1 = (torch.abs(hash1) - 1.0).pow(2).mean()
-        quant_loss2 = (torch.abs(hash2) - 1.0).pow(2).mean()
-        quant_loss = (quant_loss1 + quant_loss2) / 2.0
-
-        mean_hash = (hash1.mean(dim=0) + hash2.mean(dim=0)) / 2.0
-        dist_loss = mean_hash.pow(2).mean()
+        quant_loss = (torch.abs(hash1) - 1.0).abs().mean() + (torch.abs(hash2) - 1.0).abs().mean()
+        
+        dist_loss = (hash1.sum(dim=0).abs() / hash1.size(0)).mean() + (hash2.sum(dim=0).abs() / hash2.size(0)).mean()
         
         total_loss = sim_loss + self.beta * quant_loss + self.gamma * dist_loss
-        return total_loss, sim_loss, quant_loss, dist_loss
+
+        return total_loss, sim_loss, quant_loss.mean(), dist_loss.mean()
 
 
 def main_train():
