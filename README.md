@@ -1,8 +1,3 @@
-I'd be happy to create a comprehensive README for your PDF Forensics Deep Hashing System\!
-
-This README explains the system's purpose, architecture, setup instructions, and how to use the main pipeline script.
-
-````markdown
 # 🔎 PDF Forensics: Multimodal Deep Hashing System
 
 This project implements a **Multimodal Deep Supervised Hashing** system designed to detect various forms of tampering in PDF documents. The system compares two PDF versions (or a document against a database) by generating a short, fixed-length binary **hash** from the document's visual and textual content. The similarity between two documents is then determined by calculating the **Hamming distance** between their hashes.
@@ -132,6 +127,3 @@ All major parameters for the system are defined in `config.py`. You can adjust t
 | `SAMPLES_PER_ORIGINAL` | `config.py` | Number of tampered pairs generated for each original PDF (default `5`). |
 | `NUM_EPOCHS` | `config.py` | Total training epochs. |
 | `TAMPER_TYPES` | `config.py` | List of 19 tampering techniques used. |
-
-```
-```
