@@ -1,18 +1,8 @@
-"""
-Pre-processing script for the PDF Forensics Dataset.
-
-This script runs ONCE after data_generator.py.
-It reads the dataset.csv, extracts text and image modalities
-from all unique PDFs, and saves them to disk.
-This makes training dramatically faster by avoiding
-on-the-fly PDF rendering.
-"""
-
 import os
 import pandas as pd
 from tqdm import tqdm
 from PIL import Image
-import fitz  # PyMuPDF
+import fitz
 import io
 import hashlib
 from config import DATASET_CSV_PATH, IMAGE_SIZE
@@ -51,8 +41,6 @@ def extract_and_save(pdf_path: str, page_num: int = 0) -> tuple:
             doc.close()
             return None, None
         
-        # --- Improvement: Don't just use page 0 ---
-        # Use the middle page for more representative content
         if page_num == -1: # Use -1 as a flag for "middle page"
              page_num = doc.page_count // 2
         
@@ -98,7 +86,6 @@ def main():
     print(f"Found {len(all_unique_paths)} unique PDF documents to process.")
 
     # Process all unique PDFs and store their new paths
-    # We use -1 to signal "extract middle page"
     processed_paths = {}
     for path in tqdm(all_unique_paths, desc="Processing unique PDFs"):
         txt_path, img_path = extract_and_save(path, page_num=-1)

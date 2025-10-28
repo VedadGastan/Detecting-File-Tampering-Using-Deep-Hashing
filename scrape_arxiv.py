@@ -1,7 +1,3 @@
-"""
-Scrapes arXiv.org for recent PDF papers to build a training dataset.
-"""
-
 import os
 import requests
 from bs4 import BeautifulSoup
@@ -66,7 +62,6 @@ def main():
     downloaded_count = 0
     for url in tqdm(pdf_links, desc="Downloading PDFs"):
         # Create a safe filename from the URL
-        # e.g., https://arxiv.org/pdf/2410.12345 -> 2410.12345.pdf
         filename = url.split('/')[-1]
         if not filename.endswith('.pdf'):
             filename += ".pdf"
@@ -74,13 +69,11 @@ def main():
         save_path = os.path.join(ORIGINAL_PDF_DIR, filename)
         
         if os.path.exists(save_path):
-            # print(f"Skipping {filename}, already exists.")
             continue
             
         if download_pdf(url, save_path):
             downloaded_count += 1
             
-        # Be polite to the server
         time.sleep(0.5) 
 
     print("\n" + "="*50)
@@ -90,6 +83,4 @@ def main():
     print("="*50 + "\n")
 
 if __name__ == "__main__":
-    # You may need to install these libraries first:
-    # pip install requests beautifulsoup4
     main()

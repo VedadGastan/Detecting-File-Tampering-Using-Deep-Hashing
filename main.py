@@ -1,9 +1,3 @@
-"""
-Main Pipeline for PDF Forensics Deep Hashing System
-
-Optimized for speed on CPU/Windows by enforcing a crucial data pre-processing step.
-"""
-
 import os
 import sys
 import subprocess
@@ -79,8 +73,9 @@ def main():
         sys.exit(1)
     
     print("\nPipeline Options:")
+    # UPDATED OPTIONS
     print(" [1] FULL RUN (Generate → Preprocess → Train → Evaluate)")
-    print(" [2] Generate Raw Data Only (PDFs → dataset.csv)")
+    print(" [2] Generate Raw Data Only (Pairing & Tampering)") # NEW DEDICATED OPTION
     print(" [3] Pre-process Data Only (Requires dataset.csv)")
     print(" [4] Train Model Only (Requires pre-processed data)")
     print(" [5] Evaluate Model Only (Requires trained model)")
@@ -88,6 +83,7 @@ def main():
     choice = input("\nSelect Option [1-5] (default=1): ").strip() or "1"
     
     # --- STEP 1: DATA GENERATION (PDFs to CSV) ---
+    # Choice 1 (Full) and Choice 2 (Generate Only) both run this block
     if choice in ["1", "2"]:
         print("\n" + "="*70)
         print("PHASE 1: Raw Data Generation (Pairing & Tampering)")
@@ -95,24 +91,26 @@ def main():
         try:
             generate_dataset_csv(num_samples_per_orig=SAMPLES_PER_ORIGINAL)
             if not os.path.exists(DATASET_CSV_PATH):
-                 raise FileNotFoundError(f"Expected file not created: {DATASET_CSV_PATH}")
+                raise FileNotFoundError(f"Expected file not created: {DATASET_CSV_PATH}")
             print(f"\n[SUCCESS] Raw dataset created: {DATASET_CSV_PATH}")
         except Exception as e:
             print(f"\n[ERROR] Data generation failed. Details: {e}")
             sys.exit(1)
             
-    if choice == "2": return
+    if choice == "2": return # Exit after generation if this option was selected
 
     # --- STEP 2: PRE-PROCESSING (CSV to Optimized Image/Text files) ---
+    # Choice 1 (Full) and Choice 3 (Preprocess Only) both run this block
     if choice in ["1", "3"]:
         if not os.path.exists(DATASET_CSV_PATH):
             print(f"\n[DEPENDENCY ERROR] Missing {DATASET_CSV_PATH}. Run Option 2 first.")
             sys.exit(1)
         run_preprocessing()
     
-    if choice == "3": return
+    if choice == "3": return # Exit after preprocessing if this option was selected
 
     # --- STEP 3: TRAINING ---
+    # Choice 1 (Full) and Choice 4 (Train Only) both run this block
     if choice in ["1", "4"]:
         if not os.path.exists(PREPROCESSED_CSV_PATH):
             print(f"\n[DEPENDENCY ERROR] Missing pre-processed data. Run Option 3 first.")
@@ -129,9 +127,10 @@ def main():
             print(f"\n[ERROR] Training failed. Details: {e}")
             sys.exit(1)
             
-    if choice == "4": return
+    if choice == "4": return # Exit after training if this option was selected
 
     # --- STEP 4: EVALUATION ---
+    # Choice 1 (Full) and Choice 5 (Evaluate Only) both run this block
     if choice in ["1", "5"]:
         if not os.path.exists(MODEL_SAVE_PATH):
             print(f"\n[DEPENDENCY ERROR] Missing trained model. Run Option 4 first.")
@@ -148,7 +147,7 @@ def main():
             print(f"\n[ERROR] Evaluation failed. Details: {e}")
             sys.exit(1)
             
-    if choice == "5": return
+    if choice == "5": return # Exit after evaluation if this option was selected
     
     # --- FULL RUN SUMMARY ---
     if choice == "1":

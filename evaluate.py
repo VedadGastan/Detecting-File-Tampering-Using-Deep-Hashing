@@ -1,8 +1,3 @@
-"""
-Scientific Evaluation Suite for PDF Forensics
-Includes: MAP, P@K, R@K, ROC-AUC, PR curves, statistical tests
-"""
-
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -22,14 +17,6 @@ from dataset import get_full_dataloader
 def compute_map(distances: np.ndarray, labels: np.ndarray, query_labels: np.ndarray) -> float:
     """
     Mean Average Precision (MAP) for retrieval.
-    
-    Explanation:
-    - For each query, rank database items by distance
-    - Compute precision at each relevant item position
-    - Average these precisions = Average Precision (AP)
-    - MAP = mean of all APs across queries
-    
-    Higher MAP = better retrieval performance
     """
     num_queries = distances.shape[0]
     average_precisions = []
@@ -58,12 +45,6 @@ def compute_precision_recall_at_k(distances: np.ndarray, labels: np.ndarray,
                                    query_labels: np.ndarray, k: int) -> tuple:
     """
     Precision@K and Recall@K metrics.
-    
-    Explanation:
-    - Precision@K: % of top-K results that are relevant
-    - Recall@K: % of all relevant items found in top-K
-    
-    Trade-off: Higher K increases recall but may decrease precision
     """
     num_queries = distances.shape[0]
     precisions, recalls = [], []
@@ -90,12 +71,6 @@ def compute_precision_recall_at_k(distances: np.ndarray, labels: np.ndarray,
 def compute_roc_metrics(distances: np.ndarray, labels: np.ndarray) -> dict:
     """
     ROC Curve and AUC (Area Under Curve).
-    
-    Explanation:
-    - ROC plots True Positive Rate vs False Positive Rate
-    - AUC measures overall discrimination ability
-    - AUC = 1.0: perfect classifier
-    - AUC = 0.5: random guess
     """
     fpr, tpr, thresholds = roc_curve(labels, distances)
     roc_auc = auc(fpr, tpr)
@@ -105,11 +80,6 @@ def compute_roc_metrics(distances: np.ndarray, labels: np.ndarray) -> dict:
 def compute_pr_metrics(distances: np.ndarray, labels: np.ndarray) -> dict:
     """
     Precision-Recall Curve and Average Precision.
-    
-    Explanation:
-    - PR curve shows precision vs recall trade-off
-    - Average Precision = area under PR curve
-    - More informative than ROC for imbalanced datasets
     """
     precision, recall, thresholds = precision_recall_curve(labels, distances)
     avg_precision = average_precision_score(labels, distances)
@@ -121,11 +91,6 @@ def compute_statistical_tests(similar_distances: np.ndarray,
                               tampered_distances: np.ndarray) -> dict:
     """
     Statistical significance tests.
-    
-    Explanation:
-    - Mann-Whitney U: non-parametric test for distribution difference
-    - p < 0.05: distributions are significantly different
-    - Effect size (Cohen's d): magnitude of difference
     """
     statistic, p_value = stats.mannwhitneyu(similar_distances, tampered_distances, 
                                            alternative='less')
@@ -149,11 +114,6 @@ def compute_statistical_tests(similar_distances: np.ndarray,
 def analyze_hash_quality(hashes: torch.Tensor) -> dict:
     """
     Hash code quality metrics.
-    
-    Explanation:
-    - Bit balance: how evenly distributed are +1/-1 values
-    - Bit variance: how much each bit varies across samples
-    - Good hashes have balanced, high-variance bits
     """
     binary_hashes = (hashes > 0).float()
     bit_means = binary_hashes.mean(dim=0)
@@ -228,7 +188,7 @@ def evaluate_model():
         ).numpy()
         distance_matrix[i] = distances
     
-    # === EVALUATION METRICS ===
+    # EVALUATION METRICS
     print(f"\n{'='*50}")
     print("RETRIEVAL METRICS")
     print(f"{'='*50}\n")
@@ -243,8 +203,8 @@ def evaluate_model():
                 distance_matrix, all_labels, all_labels, k
             )
             print(f"  K={k:3d}: P={precision_k:.4f} | R={recall_k:.4f}")
-    
-    # === CLASSIFICATION METRICS ===
+
+    # CLASSIFICATION METRICS
     print(f"\n{'='*50}")
     print("CLASSIFICATION METRICS")
     print(f"{'='*50}\n")
@@ -266,7 +226,7 @@ def evaluate_model():
     print(f"Similar:     {cm[0,0]:6d}    {cm[0,1]:6d}")
     print(f"Tampered:    {cm[1,0]:6d}    {cm[1,1]:6d}")
     
-    # === ROC AND PR CURVES ===
+    # ROC AND PR CURVES
     distances_diag = distance_matrix.diagonal()
     roc_metrics = compute_roc_metrics(distances_diag, all_labels)
     pr_metrics = compute_pr_metrics(distances_diag, all_labels)
@@ -274,7 +234,7 @@ def evaluate_model():
     print(f"\nROC AUC: {roc_metrics['auc']:.4f}")
     print(f"Average Precision: {pr_metrics['avg_precision']:.4f}")
     
-    # === STATISTICAL TESTS ===
+    # STATISTICAL TESTS
     print(f"\n{'='*50}")
     print("STATISTICAL ANALYSIS")
     print(f"{'='*50}\n")
@@ -288,7 +248,7 @@ def evaluate_model():
     print(f"Mann-Whitney U p-value: {stats_results['p_value']:.4e}")
     print(f"Effect size (Cohen's d): {stats_results['cohens_d']:.4f}")
     
-    # === HASH QUALITY ===
+    # HASH QUALITY
     print(f"\n{'='*50}")
     print("HASH CODE QUALITY")
     print(f"{'='*50}\n")
@@ -297,7 +257,7 @@ def evaluate_model():
     print(f"Bit balance: {hash_quality['bit_balance']:.4f} (closer to 0 is better)")
     print(f"Bit variance: {hash_quality['bit_variance']:.4f} (higher is better)")
     
-    # === VISUALIZATIONS ===
+    # VISUALIZATIONS
     print(f"\n{'='*50}")
     print("Generating visualizations...")
     print(f"{'='*50}\n")

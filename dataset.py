@@ -1,7 +1,3 @@
-"""
-PyTorch Dataset for Multimodal PDF Forensics (PRE-PROCESSED)
-"""
-
 import pandas as pd
 from PIL import Image
 import torch
@@ -143,9 +139,8 @@ def get_dataloader(is_train: bool = True, batch_size: int = BATCH_SIZE) -> DataL
     
     dataset = ForensicsDataset(subset_df)
     
-    # --- Improvement: Use parallel workers ---
-    # Use 4 workers (or more if your CPU is strong) to load data in parallel
-    num_workers = 4 if os.name == 'posix' else 0 # num_workers > 0 can cause issues on Windows
+
+    num_workers = 6 if os.name == 'posix' else 0
     
     return DataLoader(
         dataset, 
@@ -153,7 +148,7 @@ def get_dataloader(is_train: bool = True, batch_size: int = BATCH_SIZE) -> DataL
         shuffle=shuffle,
         collate_fn=collate_fn,
         num_workers=num_workers,
-        pin_memory=False # Speeds up CPU-to-GPU data transfer
+        pin_memory=False
     )
 
 

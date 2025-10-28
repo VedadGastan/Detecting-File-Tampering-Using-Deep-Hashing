@@ -1,618 +1,137 @@
-# Multimodal Deep Hashing for PDF Forensics
+I'd be happy to create a comprehensive README for your PDF Forensics Deep Hashing System\!
 
-**Bachelor Thesis Implementation**: Detecting PDF Document Tampering using Deep Learning
+This README explains the system's purpose, architecture, setup instructions, and how to use the main pipeline script.
 
----
+````markdown
+# 🔎 PDF Forensics: Multimodal Deep Hashing System
 
-## 📋 Table of Contents
+This project implements a **Multimodal Deep Supervised Hashing** system designed to detect various forms of tampering in PDF documents. The system compares two PDF versions (or a document against a database) by generating a short, fixed-length binary **hash** from the document's visual and textual content. The similarity between two documents is then determined by calculating the **Hamming distance** between their hashes.
 
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Tampering Detection Methods](#tampering-detection-methods)
-4. [Installation](#installation)
-5. [Quick Start](#quick-start)
-6. [Model Architecture Details](#model-architecture-details)
-7. [Evaluation Metrics Explained](#evaluation-metrics-explained)
-8. [File Structure](#file-structure)
-9. [Configuration](#configuration)
-10. [Results Interpretation](#results-interpretation)
+Optimized for reliable and fast training on CPU/Windows environments through a crucial data pre-processing step.
 
----
+## 🚀 How It Works: The Core Idea
 
-## 🎯 Overview
+The system is built on a specialized deep neural network that combines two distinct modalities—**text** and **image**—to create a tamper-resistant hash.
 
-This system detects tampering in PDF documents using **deep supervised hashing** with multimodal features (text + images). It generates compact binary hash codes that cluster similar documents together while separating tampered ones.
+### 1. Architecture (Model)
 
-### Key Features
+The system uses a fused multimodal architecture:
+* **Text Modality:** A **DistilBERT** model processes the text content extracted from the PDF, capturing semantic meaning.
+* **Image Modality:** An **EfficientNet-B0** model processes the rendered image of the PDF page, capturing visual layout and subtle graphic changes (like image splicing or improper redaction).
+* **Fusion & Hashing:** The features from both branches are combined and passed through a final projection layer to produce a **64-bit binary hash**.
 
-- **15 Forensically-Relevant Tampering Techniques**
-- **Multimodal Deep Learning**: BERT (text) + ResNet (image)
-- **Fast Training**: Mixed precision training with AMP
-- **Scientific Evaluation**: ROC curves, statistical tests, retrieval metrics
-- **Severity Classification**: LOW, MEDIUM, HIGH, CRITICAL tampering levels
+### 2. Forensic Data Generation
 
-### How It Works
+To train the model to be sensitive to tampering, the system automatically generates a dataset using **19 different forensically-relevant tampering techniques** (e.g., invisible text insertion, zero-width space attacks, image recompression, font substitution, etc.). The dataset consists of pairs of documents:
+* **Identity Pair (Label 0):** Original PDF A compared against itself. (For training the hash to be stable and similar).
+* **Tampered Pair (Label 1):** Original PDF A compared against Tampered PDF A'. (For training the hash to be sensitive and different).
 
-```
-PDF Document → Text + Image Extraction → BERT + ResNet → Hash Code (64 bits)
-                                            ↓
-                                    Similar PDFs = Similar Hashes
-                                    Tampered PDFs = Different Hashes
-```
+### 3. Optimized Pipeline
 
----
+Training deep learning models that rely on image data (like the EfficientNet branch) is computationally expensive, especially when rendering images from PDFs on-the-fly. The pipeline addresses this with a dedicated **Pre-processing Step** to speed up training:
+1.  **Raw Data Generation (`data_generator.py`):** Creates the tampered PDFs and the initial `dataset.csv` (which contains paths to the raw PDF files).
+2.  **Pre-processing (`preprocess_data.py`):** Renders every unique PDF in the raw dataset *once*, extracts the text and image, and saves them as dedicated `.txt` and `.png` files to disk.
+3.  **Training (`train.py`):** The PyTorch `DataLoader` then reads the pre-saved `.txt` and `.png` files directly, eliminating the slow PDF rendering bottleneck during every training epoch.
 
-## 🏗️ Architecture
+## ⚙️ Setup and Installation
 
-### Model Components
+### Prerequisites
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   INPUT: PDF Page                   │
-└────────────────┬────────────────────────────────────┘
-                 │
-        ┌────────┴────────┐
-        │                 │
-    ┌───▼───┐        ┌────▼────┐
-    │ TEXT  │        │  IMAGE  │
-    └───┬───┘        └────┬────┘
-        │                 │
-    ┌───▼───────┐    ┌────▼─────────┐
-    │   BERT    │    │  ResNet-18   │
-    │ (768-dim) │    │  (512-dim)   │
-    └───┬───────┘    └────┬─────────┘
-        │                 │
-    ┌───▼───────┐    ┌────▼─────────┐
-    │ Project   │    │   Project    │
-    │ to 64-bit │    │  to 64-bit   │
-    └───┬───────┘    └────┬─────────┘
-        │                 │
-        └────────┬────────┘
-                 │
-        ┌────────▼────────┐
-        │  Fusion Layer   │
-        │    (64-bit)     │
-        └────────┬────────┘
-                 │
-        ┌────────▼────────┐
-        │  Binary Hash    │
-        │   {-1, +1}^64   │
-        └─────────────────┘
-```
+You need Python 3.8+ and the following system dependencies (for PyMuPDF):
 
-### Text Encoder: BERT
+* **Windows:** No special setup required.
+* **Linux/macOS:** You may need development headers for PyMuPDF to install successfully.
 
-**Model**: `bert-base-uncased` (110M parameters)
-- **Input**: Tokenized text (max 512 tokens)
-- **Output**: 768-dimensional embedding from [CLS] token
-- **Captures**: Semantic text content, document structure
+### Environment Setup
 
-**Why BERT?**
-- Pretrained on massive text corpora
-- Understands context and semantics
-- Robust to minor text variations
+1.  **Clone the repository:**
+    ```bash
+    git clone <your-repo-link>
+    cd pdf-forensics-hashing
+    ```
 
-**Alternatives**:
-- **RoBERTa**: Better performance, more training data
-- **DistilBERT**: 40% smaller, 60% faster, 97% performance
-- **ELECTRA**: More efficient pretraining
-- **ALBERT**: Parameter-efficient, good for limited memory
-- **DeBERTa**: State-of-the-art, larger models
+2.  **Create and activate a virtual environment:**
+    ```bash
+    python -m venv venv
+    # On Windows:
+    .\venv\Scripts\activate
+    # On macOS/Linux:
+    source venv/bin/activate
+    ```
 
-### Image Encoder: ResNet-18
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+    *(Note: You will need a `requirements.txt` file listing all necessary packages like `torch`, `transformers`, `torchvision`, `pandas`, `tqdm`, `Pillow`, `PyMuPDF` (or `fitz`), `requests`, `beautifulsoup4`, `scikit-learn`, etc.)*
 
-**Model**: ResNet-18 pretrained on ImageNet (11M parameters)
-- **Input**: 224×224 RGB image (rendered PDF page)
-- **Output**: 512-dimensional feature vector
-- **Captures**: Visual layout, formatting, artifacts
+## 🏁 Usage: The Main Pipeline
 
-**Why ResNet-18?**
-- Lightweight but effective
-- Pretrained on ImageNet (good feature extractor)
-- Fast inference
+The entire workflow is managed through the central script, `main.py`.
 
-**Alternatives**:
-- **EfficientNet-B0**: Better accuracy/efficiency trade-off
-- **Vision Transformer (ViT)**: Attention-based, state-of-the-art
-- **ConvNeXT**: Modern CNN architecture
-- **DenseNet**: Better feature reuse
-- **MobileNetV3**: Very fast, mobile-friendly
-- **Swin Transformer**: Hierarchical vision transformer
+### 1. Initial Data Acquisition
 
-### Hash Projection
-
-**Deep Supervised Hashing (DSH)**:
-1. **Projection**: Linear layer + Tanh → outputs in [-1, 1]
-2. **Binarization**: sign(x) → converts to {-1, +1}
-3. **Loss Function**:
-   - **Similarity Loss**: Similar docs → small Hamming distance
-   - **Quantization Loss**: Forces outputs to ±1
-   - **Distribution Loss**: Balances bit usage
-
----
-
-## 🔍 Tampering Detection Methods
-
-### All 15 Tampering Techniques
-
-| # | Technique | Severity | Description | Detection Importance |
-|---|-----------|----------|-------------|---------------------|
-| 1 | **Invisible Text Injection** | HIGH | Hidden text off-page boundaries | Common in fraud, phishing |
-| 2 | **Zero-Width Space Injection** | HIGH | Invisible Unicode characters | Text manipulation, OCR evasion |
-| 3 | **JavaScript Injection** | HIGH | Malicious code embedding | Security threat, payload delivery |
-| 4 | **Link Manipulation** | HIGH | URL/hyperlink tampering | Phishing, redirect attacks |
-| 5 | **Font Substitution** | MEDIUM | Font replacement attacks | Visual spoofing |
-| 6 | **Page Rotation** | MEDIUM | Orientation changes | Layout tampering |
-| 7 | **Watermark Injection** | MEDIUM | Hidden/visible watermark addition | Authenticity claims |
-| 8 | **Line Artifacts** | MEDIUM | Near-invisible visual marks | Subtle visual tampering |
-| 9 | **Image Recompression** | MEDIUM | Quality degradation | Hides edits, reduces file size |
-| 10 | **Annotation Injection** | MEDIUM | Hidden comments/notes | Metadata tampering |
-| 11 | **Metadata Changes** | LOW | Author, date, producer modification | Basic tampering indicator |
-| 12 | **TOC Removal** | LOW | Table of contents deletion | Structural change |
-| 13 | **Bookmark Manipulation** | LOW | PDF outline changes | Navigation tampering |
-| 14 | **Encryption Metadata** | LOW | Security settings changes | False security claims |
-| 15 | **Content Stream Reordering** | CRITICAL | PDF object reordering | Deep structural tampering |
-
-### Why These Matter
-
-**High Severity**: Direct security threats, common in malicious documents
-**Medium Severity**: Visual/structural tampering, harder to detect manually
-**Low Severity**: Metadata tampering, easy to detect but still relevant
-**Critical Severity**: Advanced attacks requiring PDF structure knowledge
-
----
-
-## 📦 Installation
-
-### Requirements
+First, you need to populate the source directory (`data/original_pdfs`) with documents.
 
 ```bash
-Python 3.8+
-CUDA 11.0+ (optional, for GPU acceleration)
-```
+python scrape_arxiv.py
+````
 
-### Setup
+This script downloads recent PDF papers from arXiv.org and saves them to the configured directory.
 
-```bash
-# Clone repository
-git clone <repository-url>
-cd pdf-forensics
+### 2\. Running the Pipeline
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or
-venv\Scripts\activate  # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### Requirements.txt
-
-```
-torch>=2.0.0
-torchvision>=0.15.0
-transformers>=4.30.0
-PyMuPDF>=1.22.0
-Pillow>=9.5.0
-pandas>=2.0.0
-numpy>=1.24.0
-scikit-learn>=1.3.0
-scipy>=1.11.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-tqdm>=4.65.0
-```
-
----
-
-## 🚀 Quick Start
-
-### 1. Prepare Data
-
-Add your PDF files to `data/original_pdfs/`:
-
-```bash
-mkdir -p data/original_pdfs
-cp /path/to/your/pdfs/*.pdf data/original_pdfs/
-```
-
-**Recommended**: 50-100 diverse PDF documents (academic papers, reports, etc.)
-
-### 2. Run Full Pipeline
+Execute the main script and select your desired option from the menu.
 
 ```bash
 python main.py
 ```
 
-**Options**:
-- `[1]` Full pipeline (recommended first run)
-- `[2]` Generate data only
-- `[3]` Train model only
-- `[4]` Evaluate model only
+You will be presented with the following options:
 
-### 3. View Results
+| Option | Description | Dependencies |
+| :---: | :--- | :--- |
+| **1** | **FULL RUN** | Requires: PDFs in `data/original_pdfs` |
+| **2** | **Generate Raw Data Only** (Pairing & Tampering) | Requires: PDFs in `data/original_pdfs` |
+| **3** | **Pre-process Data Only** | Requires: `data/dataset.csv` (from Option 2) |
+| **4** | **Train Model Only** | Requires: Pre-processed data (from Option 3) |
+| **5** | **Evaluate Model Only** | Requires: Trained model (`checkpoints/best_model.pth`) |
 
-```
-results/
-├── evaluation_results.txt      # Numerical metrics
-├── roc_curve.png               # ROC curve visualization
-├── pr_curve.png                # Precision-Recall curve
-├── distance_distribution.png   # Hamming distance histogram
-├── confusion_matrix.png        # Classification matrix
-└── training_curves.png         # Training history (if available)
-```
+-----
 
----
+### Recommended Workflow (Option 1)
 
-## 🧠 Model Architecture Details
-
-### Training Process
-
-```python
-# 1. Data Generation
-for each PDF:
-    Original vs Original → Label = 0 (similar)
-    Original vs Tampered → Label = 1 (dissimilar)
-
-# 2. Forward Pass
-text_embed = BERT(text_tokens)           # → 768-dim
-image_embed = ResNet(image_pixels)       # → 512-dim
-text_hash = project(text_embed)          # → 64-dim
-image_hash = project(image_embed)        # → 64-dim
-final_hash = fusion([text_hash, image_hash])  # → 64-dim
-
-# 3. Loss Computation
-similarity_loss = log(1 + exp(-target * inner_product))
-quantization_loss = (|hash| - 1)²
-distribution_loss = mean(hash)²
-total_loss = similarity_loss + β*quantization_loss + γ*distribution_loss
-
-# 4. Binarization (inference)
-binary_hash = sign(final_hash)  # {-1, +1}^64
-```
-
-### Hyperparameters
-
-```python
-HASH_BIT_LENGTH = 64        # Hash code size
-LEARNING_RATE = 1e-4        # AdamW optimizer
-BATCH_SIZE = 8              # Batch size
-NUM_EPOCHS = 20             # Training epochs
-BETA_QUANT = 0.1            # Quantization loss weight
-GAMMA_DIST = 0.01           # Distribution loss weight
-```
-
-### Speed Optimizations
-
-1. **Mixed Precision Training** (AMP): 2-3× faster on GPU
-2. **Cosine Annealing Scheduler**: Better convergence
-3. **AdamW Optimizer**: Decoupled weight decay
-4. **Gradient Checkpointing** (optional): Reduced memory usage
-
----
-
-## 📊 Evaluation Metrics Explained
-
-### Retrieval Metrics
-
-#### Mean Average Precision (MAP)
-
-**What it measures**: How well the model ranks similar documents
-
-**Calculation**:
-```
-For each query document:
-    1. Rank all documents by Hamming distance
-    2. Compute Precision@k for each relevant document position
-    3. Average these precisions → AP
-MAP = mean of all APs
-```
-
-**Interpretation**:
-- MAP = 1.0: Perfect ranking
-- MAP = 0.5: Random ranking
-- MAP > 0.8: Excellent performance
-
-#### Precision@K and Recall@K
-
-**Precision@K**: % of top-K results that are relevant
-```
-Precision@K = (Relevant docs in top-K) / K
-```
-
-**Recall@K**: % of all relevant docs found in top-K
-```
-Recall@K = (Relevant docs in top-K) / (Total relevant docs)
-```
-
-**Trade-off**: Higher K → Higher Recall, Lower Precision
-
-### Classification Metrics
-
-#### Confusion Matrix
+For a first-time run, simply choose Option **1** for a full, automated process:
 
 ```
-                Predicted
-              Similar  Tampered
-Actual Similar    TP       FN
-       Tampered   FP       TN
+Pipeline Options:
+ [1] FULL RUN (Generate → Preprocess → Train → Evaluate)
+ [2] Generate Raw Data Only (Pairing & Tampering)
+ [3] Pre-process Data Only (Requires dataset.csv)
+ [4] Train Model Only (Requires pre-processed data)
+ [5] Evaluate Model Only (Requires trained model)
+
+Select Option [1-5] (default=1): 1
 ```
 
-- **True Positive (TP)**: Correctly identified similar docs
-- **False Negative (FN)**: Similar docs misclassified as tampered
-- **False Positive (FP)**: Tampered docs misclassified as similar
-- **True Negative (TN)**: Correctly identified tampered docs
+The script will proceed through the four main phases:
 
-#### Precision, Recall, F1-Score
+1.  **PHASE 1: Raw Data Generation:** Creates tampered PDFs and the initial dataset CSV.
+2.  **PHASE 2: Data Pre-processing:** Extracts and saves text/image files for performance optimization.
+3.  **PHASE 3: Model Training:** Trains the Multimodal Deep Hashing Model.
+4.  **PHASE 4: Model Evaluation:** Computes standard retrieval metrics (MAP, P@K, R@K) and saves results.
 
-```
-Precision = TP / (TP + FP)   # How many predictions are correct
-Recall = TP / (TP + FN)      # How many actual similar docs found
-F1 = 2 * (Precision * Recall) / (Precision + Recall)  # Harmonic mean
-```
+## 🛠️ Configuration
 
-### ROC Curve and AUC
+All major parameters for the system are defined in `config.py`. You can adjust them to customize the process:
 
-**ROC (Receiver Operating Characteristic)**:
-- X-axis: False Positive Rate (FPR)
-- Y-axis: True Positive Rate (TPR)
-- Shows trade-off at different thresholds
-
-**AUC (Area Under Curve)**:
-- AUC = 1.0: Perfect classifier
-- AUC = 0.5: Random classifier
-- AUC > 0.9: Excellent model
-
-### Precision-Recall Curve
-
-**Better for imbalanced datasets** (more tampered than similar docs)
-- Shows precision vs recall at different thresholds
-- Average Precision = area under PR curve
-
-### Statistical Tests
-
-#### Mann-Whitney U Test
-
-**What it tests**: Are similar and tampered distance distributions different?
-
-**Null hypothesis**: Distributions are the same
-**p-value < 0.05**: Reject null hypothesis (distributions ARE different)
-
-#### Cohen's d (Effect Size)
-
-**Measures magnitude of difference**:
-```
-d = (mean_similar - mean_tampered) / pooled_std
-```
-
-**Interpretation**:
-- d = 0.2: Small effect
-- d = 0.5: Medium effect
-- d = 0.8: Large effect
-- d > 1.0: Very large effect
-
-### Hash Quality Metrics
-
-#### Bit Balance
-
-**Measures**: How evenly distributed are +1/-1 values across bits
-```
-bit_balance = mean(|bit_mean - 0.5|)
-```
-**Good hash**: bit_balance → 0 (each bit is 50/50)
-
-#### Bit Variance
-
-**Measures**: How much each bit varies across samples
-```
-bit_variance = mean(variance(bit_i))
-```
-**Good hash**: High variance (bits discriminate well)
-
----
-
-## 📁 File Structure
+| Parameter | Location | Purpose |
+| :--- | :--- | :--- |
+| `DEVICE` | `config.py` | Set to `'cuda'` or `'cpu'`. |
+| `HASH_BIT_LENGTH` | `config.py` | The length of the binary hash (e.g., `64`). |
+| `SAMPLES_PER_ORIGINAL` | `config.py` | Number of tampered pairs generated for each original PDF (default `5`). |
+| `NUM_EPOCHS` | `config.py` | Total training epochs. |
+| `TAMPER_TYPES` | `config.py` | List of 19 tampering techniques used. |
 
 ```
-pdf-forensics/
-│
-├── main.py                 # Main pipeline orchestrator
-├── config.py               # Configuration parameters
-├── model.py                # MultiModalHashingModel definition
-├── train.py                # Training loop with AMP
-├── evaluate.py             # Comprehensive evaluation suite
-├── dataset.py              # PyTorch Dataset and DataLoader
-├── data_generator.py       # PDF tampering and dataset creation
-│
-├── data/
-│   ├── original_pdfs/      # Your original PDF files
-│   ├── tampered_pdfs/      # Generated tampered versions
-│   └── dataset.csv         # Paired dataset metadata
-│
-├── checkpoints/
-│   └── best_model.pth      # Trained model weights
-│
-├── results/
-│   ├── evaluation_results.txt
-│   ├── roc_curve.png
-│   ├── pr_curve.png
-│   ├── distance_distribution.png
-│   └── confusion_matrix.png
-│
-└── README.md               # This file
 ```
-
----
-
-## ⚙️ Configuration
-
-Edit `config.py` to customize:
-
-```python
-# Model
-HASH_BIT_LENGTH = 64          # Hash code size (32, 64, 128)
-MAX_SEQ_LENGTH = 512          # BERT max tokens
-IMAGE_SIZE = 224              # ResNet input size
-
-# Training
-LEARNING_RATE = 1e-4
-BATCH_SIZE = 8                # Reduce if out of memory
-NUM_EPOCHS = 20
-TRAIN_TEST_SPLIT = 0.8
-
-# Loss weights
-BETA_QUANT = 0.1
-GAMMA_DIST = 0.01
-
-# Data generation
-SAMPLES_PER_ORIGINAL = 5      # Tampered versions per PDF
-TAMPER_TYPES = [...]          # Enable/disable tampering types
-
-# Paths
-ORIGINAL_PDF_DIR = "data/original_pdfs"
-TAMPERED_PDF_DIR = "data/tampered_pdfs"
-MODEL_SAVE_PATH = "checkpoints/best_model.pth"
-RESULTS_DIR = "results"
-
-# Evaluation
-TOP_K_VALUES = [1, 5, 10, 20]  # K values for P@K and R@K
-```
-
----
-
-## 📈 Results Interpretation
-
-### Good Model Indicators
-
-✅ **MAP > 0.8**: Excellent retrieval performance
-✅ **ROC AUC > 0.9**: Strong discrimination ability
-✅ **F1-Score > 0.85**: Good balance of precision/recall
-✅ **p-value < 0.001**: Statistically significant difference
-✅ **Cohen's d > 1.0**: Large effect size
-✅ **Bit balance < 0.1**: Well-distributed hash codes
-
-### Common Issues
-
-❌ **Low MAP (<0.6)**: Model not learning similarity well
-- Solution: Train longer, adjust loss weights, check data quality
-
-❌ **High FP rate**: Tampered docs misclassified as similar
-- Solution: Lower threshold, add more training data
-
-❌ **High FN rate**: Similar docs misclassified as tampered
-- Solution: Increase threshold, improve model capacity
-
-❌ **Poor bit balance (>0.2)**: Hash codes not utilizing all bits
-- Solution: Increase GAMMA_DIST, check distribution loss
-
----
-
-## 🔬 Advanced Usage
-
-### Custom Tampering
-
-Add your own tampering in `data_generator.py`:
-
-```python
-def create_tampered_version(orig_pdf_path, tamper_type):
-    # ...
-    elif tamper_type == "my_custom_attack":
-        # Your tampering logic here
-        page.custom_operation()
-```
-
-### Different Architectures
-
-Replace encoders in `model.py`:
-
-```python
-# Use RoBERTa instead of BERT
-self.text_encoder = AutoModel.from_pretrained('roberta-base')
-
-# Use EfficientNet instead of ResNet
-from efficientnet_pytorch import EfficientNet
-self.image_encoder = EfficientNet.from_pretrained('efficientnet-b0')
-```
-
-### Severity-Aware Loss
-
-Modify loss function in `train.py`:
-
-```python
-# Weight loss by severity
-severity_weights = {'LOW': 0.5, 'MEDIUM': 1.0, 'HIGH': 1.5, 'CRITICAL': 2.0}
-weighted_loss = loss * severity_weights[tamper_severity]
-```
-
----
-
-## 📚 References
-
-### Papers
-
-1. **Deep Supervised Hashing**: Lin et al. (CVPR 2015)
-2. **BERT**: Devlin et al. (NAACL 2019)
-3. **ResNet**: He et al. (CVPR 2016)
-
-### Libraries
-
-- **PyTorch**: https://pytorch.org/
-- **Transformers**: https://huggingface.co/transformers/
-- **PyMuPDF**: https://pymupdf.readthedocs.io/
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Areas for improvement:
-- More tampering techniques
-- Additional evaluation metrics
-- Faster architectures (ViT, EfficientNet)
-- Multi-page PDF support
-- Cross-dataset evaluation
-
----
-
-## 📄 License
-
-MIT License - see LICENSE file for details
-
----
-
-## 🐛 Troubleshooting
-
-### Out of Memory
-
-```python
-# Reduce batch size in config.py
-BATCH_SIZE = 4  # or 2
-```
-
-### Slow Training
-
-```bash
-# Use GPU if available
-DEVICE = 'cuda'
-
-# Enable AMP (already enabled in train.py)
-# Reduces memory and speeds up 2-3×
-```
-
-### Poor Results
-
-1. **Check data quality**: Are PDFs readable?
-2. **Increase training data**: Add more original PDFs
-3. **Train longer**: Increase NUM_EPOCHS
-4. **Adjust hyperparameters**: Tune learning rate, loss weights
-
----
-
-## 📧 Contact
-
-For questions or issues, please open a GitHub issue or contact the author.
-
----
-
-**Built with ❤️ for PDF Forensics Research**

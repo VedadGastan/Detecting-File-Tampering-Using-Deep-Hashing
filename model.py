@@ -1,8 +1,3 @@
-"""
-Multimodal Deep Hashing Model for PDF Forensics
-Architecture: DistilBERT (text) + EfficientNet (image) + Hash Projection
-"""
-
 import torch
 import torch.nn as nn
 from transformers import DistilBertModel, AutoTokenizer
@@ -24,14 +19,10 @@ class MultiModalHashingModel(nn.Module):
         super(MultiModalHashingModel, self).__init__()
         self.hash_bits = hash_bits
 
-        # --- Improvement: Use DistilBERT (faster, smaller) ---
         self.text_encoder = DistilBertModel.from_pretrained('distilbert-base-uncased')
         self.text_output_dim = self.text_encoder.config.hidden_size # 768
 
-        # --- Improvement: Use EfficientNet (better accuracy/size) ---
         effnet = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
-        # The classifier layer in EfficientNet is effnet.classifier
-        # We replace it to get the features before the final FC layer
         self.image_output_dim = effnet.classifier[1].in_features # 1280
         effnet.classifier = nn.Identity() # Remove the final classifier
         self.image_encoder = effnet
@@ -52,11 +43,16 @@ class MultiModalHashingModel(nn.Module):
             nn.Tanh()
         )
 
-    def forward_single_doc(self, text_input: Dict[str, torch.Tensor], 
+    def forward_single_doc(self, text_input: Dict[str, torch.Tensor],
                            img_input: torch.Tensor) -> torch.Tensor:
         """Process single document and produce hash code."""
-        # DistilBERT output is different, we take last_hidden_state
-        text_outputs = self.text_encoder(**text_input, return_dict=True)
+        if 'token_type_ids' in text_input:
+            text_input_for_bert = text_input.copy()
+            del text_input_for_bert['token_type_ids']
+        else:
+            text_input_for_bert = text_input
+
+        text_outputs = self.text_encoder(**text_input_for_bert, return_dict=True)
         text_embedding = text_outputs.last_hidden_state[:, 0, :] # [CLS] token
         text_hash = self.text_projection(text_embedding)
 
@@ -67,7 +63,7 @@ class MultiModalHashingModel(nn.Module):
 
         combined_features = torch.cat((text_hash, image_hash), dim=1)
         final_hash = self.hash_layer(combined_features)
-        
+
         return final_hash
 
     def forward(self, doc1_modalities: Tuple[Dict, torch.Tensor], 
@@ -89,10 +85,6 @@ def binarize_hash(hash_output: torch.Tensor) -> torch.Tensor:
 
 def hamming_distance(hash1: torch.Tensor, hash2: torch.Tensor) -> torch.Tensor:
     """Compute Hamming distance between binary hashes."""
-    # (hash1 != hash2) is not correct for {-1, +1} tensors.
-    # A distance of 0 is when they are equal (1*1=1, -1*-1=1)
-    # A distance of 2 is when they are different (1*-1=-1)
-    # (1 - (hash1 * hash2)) / 2 gives {0, 1} per bit
     return (1.0 - (hash1 * hash2)) / 2.0 * hash1.shape[1]
 
 

@@ -1,13 +1,8 @@
-"""
-Training Module with Mixed Precision and Severity Detection
-"""
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.cuda.amp import autocast, GradScaler
 from tqdm import tqdm
-import os
 from config import (
     LEARNING_RATE, MODEL_SAVE_PATH, NUM_EPOCHS, DEVICE, 
     HASH_BIT_LENGTH, BETA_QUANT, GAMMA_DIST
@@ -19,9 +14,6 @@ from dataset import get_dataloader
 class DeepHashingLoss(nn.Module):
     """
     Deep Supervised Hashing Loss with class imbalance weighting.
-    
-    The loss applies a weight of 3.0 to the minority class (identity pairs, Label=0)
-    to counteract the 1:5 ratio of identity to tampered data.
     """
     
     def __init__(self, L: int = HASH_BIT_LENGTH, beta: float = BETA_QUANT, 
@@ -90,7 +82,7 @@ def main_train():
     best_test_loss = float('inf')
     
     for epoch in range(NUM_EPOCHS):
-        # === TRAINING ===
+        # TRAINING
         model.train()
         epoch_metrics = {'total': 0, 'sim': 0, 'quant': 0, 'dist': 0}
         
@@ -132,7 +124,7 @@ def main_train():
         avg_quant = epoch_metrics['quant'] / len(train_loader)
         avg_dist = epoch_metrics['dist'] / len(train_loader)
         
-        # === VALIDATION ===
+        # VALIDATION
         model.eval()
         test_loss = 0
         with torch.no_grad():

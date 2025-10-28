@@ -5,24 +5,24 @@ Configuration File for PDF Forensics Deep Hashing System
 import torch
 import os
 
-# === DEVICE CONFIGURATION ===
+# DEVICE CONFIGURATION
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 ARXIV_CATEGORY_URL = "https://arxiv.org/list/cs/new"
 MAX_PDFS_TO_DOWNLOAD = 900
 
-# === MODEL CONFIGURATION ===
+# MODEL CONFIGURATION
 HASH_BIT_LENGTH = 64
 MAX_SEQ_LENGTH = 512
 IMAGE_SIZE = 224
 
-# === TRAINING CONFIGURATION ===
+# TRAINING CONFIGURATION
 LEARNING_RATE = 1e-4
 BATCH_SIZE = 10
 NUM_EPOCHS = 30
 TRAIN_TEST_SPLIT = 0.8
 
-# === LOSS FUNCTION WEIGHTS ===
+# FUNCTION WEIGHTS
 BETA_QUANT = 0.1     # Quantization loss weight
 GAMMA_DIST = 0.01    # Distribution loss weight
 
@@ -31,22 +31,24 @@ ORIGINAL_PDF_DIR = "data/original_pdfs"
 TAMPERED_PDF_DIR = "data/tampered_pdfs"
 DATASET_CSV_PATH = "data/dataset.csv"
 
-# === MODEL CHECKPOINTS ===
+# MODEL CHECKPOINTS
 MODEL_SAVE_PATH = "checkpoints/best_model.pth"
 
-# === RESULTS ===
+# RESULTS
 RESULTS_DIR = "results"
 
-# === DATA GENERATION ===
+# DATA GENERATION 
 SAMPLES_PER_ORIGINAL = 5  # Number of tampered versions per original PDF
 
-# All 15 tampering techniques
+# All 19 tampering techniques
 TAMPER_TYPES = [
     # HIGH SEVERITY
     "invisible_text",
     "zero_width_space",
     "javascript_injection",
     "link_manipulation",
+    "improper_redaction",
+    "image_splicing",
     
     # MEDIUM SEVERITY
     "font_substitution",
@@ -63,7 +65,9 @@ TAMPER_TYPES = [
     "encryption_metadata",
     
     # CRITICAL SEVERITY
-    "content_stream_reorder"
+    "content_stream_reorder",
+    "page_insertion",
+    "page_deletion"
 ]
 
 # === EVALUATION CONFIGURATION ===
