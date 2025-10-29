@@ -8,8 +8,8 @@ import os
 # DEVICE CONFIGURATION
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-ARXIV_CATEGORY_URL = "https://arxiv.org/list/cs/new"
-MAX_PDFS_TO_DOWNLOAD = 900
+ARXIV_CATEGORY_URL = "https://arxiv.org/list/cs/recent?skip=0&show=2000"
+MAX_PDFS_TO_DOWNLOAD = 2005
 
 # MODEL CONFIGURATION
 HASH_BIT_LENGTH = 64
