@@ -7,81 +7,49 @@ class TamperEngine:
     def apply_attack(original_path):
         try:
             doc = fitz.open(original_path)
-            attack_type = random.choice([
-                'clean', 'clean', 'meta', 'annot', 'page', 
-                'link', 'text', 'embed', 'layer', 'code'
-            ])
-            
-            if attack_type == 'clean':
-                return doc, 0.0
-            
-            TamperEngine.apply_attack_to_doc(doc, attack_type)
-            return doc, 1.0
-                
-        except:
-            return fitz.open(), 0.0
+            return TamperEngine.modify_document(doc)
+        except Exception:
+            return TamperEngine.create_dummy_pdf()
     
     @staticmethod
-    def apply_attack_to_doc(doc, attack_type=None):
-        if attack_type is None:
-            attack_type = random.choice(['meta', 'annot', 'page', 'link', 'text', 'embed', 'layer', 'code'])
+    def modify_document(doc):
+        if doc.page_count == 0:
+            return doc
         
-        try:
-            if attack_type == 'meta':
-                doc.set_metadata({
-                    "Author": "",
-                    "Title": "",
-                    "Subject": ""
-                })
-            
-            elif attack_type == 'annot':
-                if doc.page_count > 0:
-                    page = doc[0]
-                    for i in range(3):
-                        page.add_text_annot((100 + i*20, 100 + i*20), f"Comment {i}")
-            
-            elif attack_type == 'page':
-                doc.insert_page(-1)
-                doc.insert_page(-1)
-            
-            elif attack_type == 'link':
-                if doc.page_count > 0:
-                    page = doc[0]
-                    for i in range(5):
-                        page.insert_link({
-                            "kind": fitz.LINK_URI,
-                            "from": fitz.Rect(i*50, i*50, i*50+100, i*50+100),
-                            "uri": f"http://malicious-site-{i}.com"
-                        })
-            
-            elif attack_type == 'text':
-                if doc.page_count > 0:
-                    page = doc[0]
-                    hidden_text = "CONFIDENTIAL " * 100
-                    page.insert_text((0, 0), hidden_text, color=(1, 1, 1))
-            
-            elif attack_type == 'embed':
-                fake_binary = b"MZ" + b"X" * 5000
-                doc.embfile_add("payload.exe", fake_binary)
-                doc.embfile_add("malware.dll", b"Y" * 3000)
-            
-            elif attack_type == 'layer':
-                if doc.page_count > 0:
-                    doc.add_ocg("HiddenLayer1", on=False)
-                    doc.add_ocg("HiddenLayer2", on=False)
-            
-            elif attack_type == 'code':
-                js_code = "<JavaScript>app.alert('Compromised'); app.launchURL('http://evil.com');</JavaScript>"
-                doc.set_xml_metadata(js_code)
+        page = doc[0]
+        attack_type = random.choice(['text', 'rect', 'line', 'circle'])
         
-        except:
-            pass
+        if attack_type == 'text':
+            x = random.randint(50, 300)
+            y = random.randint(50, 500)
+            page.insert_text((x, y), f"TAMPERED_{random.randint(1000, 9999)}", color=(1, 0, 0))
+        
+        elif attack_type == 'rect':
+            x1 = random.randint(50, 200)
+            y1 = random.randint(50, 200)
+            x2 = x1 + random.randint(50, 100)
+            y2 = y1 + random.randint(50, 100)
+            page.draw_rect(fitz.Rect(x1, y1, x2, y2), color=(0, 1, 0), width=2)
+        
+        elif attack_type == 'line':
+            x1 = random.randint(50, 200)
+            y1 = random.randint(50, 200)
+            x2 = x1 + random.randint(50, 100)
+            y2 = y1 + random.randint(50, 100)
+            page.draw_line((x1, y1), (x2, y2), color=(0, 0, 1), width=2)
+        
+        elif attack_type == 'circle':
+            x = random.randint(100, 300)
+            y = random.randint(100, 400)
+            r = random.randint(20, 50)
+            page.draw_circle((x, y), r, color=(1, 0, 1), width=2)
         
         return doc
-
+    
     @staticmethod
     def create_dummy_pdf():
         doc = fitz.open()
-        page = doc.new_page()
-        page.insert_text((50, 50), "Synthetic Training Data Sample")
+        page = doc.new_page(width=595, height=842)
+        page.insert_text((50, 50), "Synthetic Training Document")
+        page.insert_text((50, 100), f"ID: {random.randint(10000, 99999)}")
         return doc
