@@ -1,110 +1,61 @@
 import os
 import time
-import urllib.request
-import xml.etree.ElementTree as ET
-from tqdm import tqdm
+import random
+import requests
+import hashlib
 
-SAVE_DIRS = ["train_data", "test_data"]
-MAX_PAPERS = 500
+class ImageScraper:
+    def __init__(self, root="dataset/originals"):
+        self.root = root
+        for s in ["train","val","test"]:
+            os.makedirs(os.path.join(root, s), exist_ok=True)
 
-TRAIN_TOPICS = ["machine learning", "neural networks", "deep learning", "computer vision"]
-TEST_TOPICS = ["cryptography", "cybersecurity", "quantum computing", "algorithms"]
+        self.session = requests.Session()
+        self.session.headers.update({"User-Agent": "DeepHashDatasetBuilder/1.0"})
 
-def fetch_papers_for_dataset(target_dir, topics, papers_needed):
-    count = 0
-    failed = 0
-    
-    pbar = tqdm(total=papers_needed, desc=f"Downloading to {target_dir}", unit="papers")
-    
-    for topic in topics:
-        if count >= papers_needed:
-            break
-            
-        remaining = papers_needed - count
-        url = f'http://export.arxiv.org/api/query?search_query=all:{topic.replace(" ", "+")}&start=0&max_results={remaining}&sortBy=submittedDate&sortOrder=descending'
-        
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            response = urllib.request.urlopen(req, timeout=30)
-            data = response.read().decode('utf-8')
-            
-            root = ET.fromstring(data)
-            namespace = {'atom': 'http://www.w3.org/2005/Atom'}
-            entries = root.findall('atom:entry', namespace)
-            
-            for entry in entries:
-                if count >= papers_needed:
-                    break
-                
-                pdf_link = None
-                for link in entry.findall('atom:link', namespace):
-                    href = link.attrib.get('href', '')
-                    link_type = link.attrib.get('type', '')
-                    
-                    if link_type == 'application/pdf' or href.endswith('.pdf'):
-                        pdf_link = href
-                        break
-                
-                if not pdf_link:
-                    continue
-                
-                title_elem = entry.find('atom:title', namespace)
-                if title_elem is None or not title_elem.text:
-                    continue
-                
-                title = title_elem.text.strip().replace('\n', ' ').replace('\r', ' ')
-                safe_title = "".join([c for c in title if c.isalnum() or c in (' ', '-')]).strip()[:50]
-                paper_id = pdf_link.split('/')[-1].replace('.pdf', '')
-                
-                filename = f"{target_dir}/{paper_id}_{safe_title.replace(' ', '_')}.pdf"
-                
-                if not os.path.exists(filename):
-                    try:
-                        urllib.request.urlretrieve(pdf_link, filename)
-                        
-                        if os.path.getsize(filename) < 1000:
-                            os.remove(filename)
-                            failed += 1
-                        else:
-                            count += 1
-                            pbar.update(1)
-                            
-                        time.sleep(3)
-                            
-                    except:
-                        failed += 1
-                        if os.path.exists(filename):
-                            os.remove(filename)
-                else:
-                    count += 1
-                    pbar.update(1)
-                    
-        except:
-            pass
-            
-        if count < papers_needed:
-            time.sleep(2)
-    
-    pbar.close()
-    return count, failed
+        self.sleep = 0.3
 
-def fetch_arxiv_pdfs():
-    for d in SAVE_DIRS:
-        if not os.path.exists(d):
-            os.makedirs(d)
-    
-    papers_per_dir = MAX_PAPERS // 2
-    
-    print(f"Fetching {papers_per_dir} training papers (ML/AI topics)...")
-    train_count, train_failed = fetch_papers_for_dataset(SAVE_DIRS[0], TRAIN_TOPICS, papers_per_dir)
-    
-    print(f"\nFetching {papers_per_dir} testing papers (Security/Crypto topics)...")
-    test_count, test_failed = fetch_papers_for_dataset(SAVE_DIRS[1], TEST_TOPICS, papers_per_dir)
-    
-    print(f"\nDownload complete:")
-    print(f"  Training: {train_count} papers in {SAVE_DIRS[0]}/")
-    print(f"  Testing:  {test_count} papers in {SAVE_DIRS[1]}/")
-    print(f"  Failed:   {train_failed + test_failed} downloads")
+    def _hash(self, b):
+        return hashlib.md5(b).hexdigest()
 
-if __name__ == "__main__":
-    fetch_arxiv_pdfs()
+    def _count_existing(self, split):
+        return len([f for f in os.listdir(os.path.join(self.root, split)) if f.endswith(".jpg")])
+
+    def download(self, total=3000, split=(0.7,0.15,0.15), w=800, h=600):
+        targets = {
+            "train": int(total * split[0]),
+            "val": int(total * split[1]),
+            "test": total - int(total * split[0]) - int(total * split[1])
+        }
+
+        seen = set()
+
+        for split_name, target in targets.items():
+            saved = self._count_existing(split_name)
+            out_dir = os.path.join(self.root, split_name)
+
+            while saved < target:
+                seed = random.randint(1, 100_000_000)
+                url = f"https://picsum.photos/seed/{seed}/{w}/{h}"
+
+                try:
+                    r = self.session.get(url, timeout=8)
+                    if "image" not in r.headers.get("Content-Type",""):
+                        raise RuntimeError
+
+                    hsh = self._hash(r.content)
+                    if hsh in seen:
+                        raise RuntimeError
+                    seen.add(hsh)
+
+                    path = os.path.join(out_dir, f"img_{saved:05d}.jpg")
+                    with open(path, "wb") as f:
+                        f.write(r.content)
+
+                    saved += 1
+                    self.sleep = max(0.2, self.sleep * 0.97)
+
+                except:
+                    self.sleep = min(2.0, self.sleep * 1.15)
+
+                time.sleep(self.sleep)
